@@ -167,7 +167,8 @@ void
 mutual_ptr<T>::
 reset_all()
 {
-    BOOST_ASSERT(p_);
+    if(! p_)
+        return;
     auto it = prev_;
     while(it)
     {
