@@ -33,7 +33,7 @@ struct mutual_ptr<T>::D :
     void
     destroy() override
     {
-        auto a = A{this->member()};
+        auto a = A{std::move(this->member())};
         this->~D();
         std::allocator_traits<A>::deallocate(
             a, this, 1);
@@ -116,6 +116,8 @@ operator=(mutual_ptr&& other)
     if(p_)
         release();
     p_ = other.p_;
+    if(! p_)
+        return *this;
     other.p_ = nullptr;
     prev_ = other.prev_;
     next_ = other.next_;
@@ -131,19 +133,20 @@ mutual_ptr<T>&
 mutual_ptr<T>::
 operator=(mutual_ptr const& other)
 {
-    if(this != &other)
-    {
-        if(p_)
-            release();
-        p_ = other.p_;
-        ++p_->n;
-        prev_ = other.prev_;
-        if(prev_)
-            prev_->next_ = this;
-        next_ =
-            const_cast<mutual_ptr*>(&other);
-        next_->prev_ = this;
-    }
+    if(this == &other)
+        return *this;
+    if(p_)
+        release();
+    p_ = other.p_;
+    if(! p_)
+        return *this;
+    ++p_->n;
+    prev_ = other.prev_;
+    if(prev_)
+        prev_->next_ = this;
+    next_ =
+        const_cast<mutual_ptr*>(&other);
+    next_->prev_ = this;
     return *this;
 }
 

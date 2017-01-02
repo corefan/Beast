@@ -30,8 +30,6 @@ namespace beast {
     state is managed by the @ref mutual_ptr and an allocator
     associated with the final handler is used to create the managed
     object.
-
-    
 */
 template<class T>
 class mutual_ptr
