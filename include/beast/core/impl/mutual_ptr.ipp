@@ -192,10 +192,10 @@ reset_all()
 template<class T>
 template<class Alloc, class... Args, class>
 mutual_ptr<T>::
-mutual_ptr(Alloc const& alloc, Args&&... args)
+mutual_ptr(Alloc&& alloc, Args&&... args)
 {
     using A = typename D<Alloc>::A;
-    auto a = A{alloc};
+    auto a = A{std::forward<Alloc>(alloc)};
     auto p = std::allocator_traits<
         A>::allocate(a, 1);
     try
