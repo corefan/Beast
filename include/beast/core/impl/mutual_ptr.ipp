@@ -25,7 +25,7 @@ struct mutual_ptr<T>::D :
     template<class... Args>
     explicit
     D(Alloc const& a, Args&&... args)
-        : empty_base_optimization<Alloc>(a)
+        : detail::empty_base_optimization<Alloc>(a)
         , B(std::forward<Args>(args)...)
     {
     }
@@ -62,6 +62,9 @@ template<class T>
 mutual_ptr<T>::
 ~mutual_ptr()
 {
+    static_assert(! std::is_array<T>::value,
+        "Array type is not supported");
+
     if(p_)
         release();
 }
@@ -183,10 +186,9 @@ reset_all()
 }
 
 template<class T>
-template<class Alloc, class... Args>
+template<class Alloc, class... Args, class>
 mutual_ptr<T>::
-mutual_ptr(detail::mutual_ptr_alloc,
-    Alloc const& alloc, Args&&... args)
+mutual_ptr(Alloc const& alloc, Args&&... args)
 {
     using A = typename D<Alloc>::A;
     auto a = A{alloc};

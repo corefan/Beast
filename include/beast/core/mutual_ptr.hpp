@@ -9,27 +9,29 @@
 #define BEAST_MUTUAL_PTR_HPP
 
 #include <cstdint>
+#include <type_traits>
 #include <utility>
 
 namespace beast {
 
-namespace detail {
-struct mutual_ptr_alloc {};
-} // detail
+/** A smart pointer container.
 
-/** A custom smart pointer.
+    This is a smart pointer that retains shared ownership of an
+    object through a pointer. The object is destroyed and its
+    memory deallocated when one of the following happens:
 
-    This smart pointer is used to manage an object allocated
-    using an allocator. It maintains a non-thread-safe reference
-    count. Instances of the smart pointer which track the same
-    managed object are kept in a linked list. The @ref reset_all
-    operation releases all pointers managing the same object.
+    * The last remaining container owning the object is destroyed
+    * The last remaining container owning the object is assigned
+      another object via @ref operator= or @ref reset.
+    * The function @ref reset_all is called.
 
     Objects of this type are used in the implementation of
     composed operations. Typically the composed operation's shared
     state is managed by the @ref mutual_ptr and an allocator
     associated with the final handler is used to create the managed
     object.
+
+    
 */
 template<class T>
 class mutual_ptr
@@ -62,13 +64,45 @@ class mutual_ptr
     mutable mutual_ptr* prev_;
 
 public:
+    /// The type of the managed object
+    using element_type = T;
+
     /** Destructor
 
-        If an object is managed by this, the reference count
-        will be decremented. If the reference count reaches
-        zero, the managed object is destroyed.
+        If `*this` owns an object and it is the last container
+        owning it, the object is destroyed using a copy of the original
+        allocator.
+        
+        After the destruction, the smart pointers that shared ownership
+        with `*this`, if any, will report a @ref use_count that is one
+        less than its previous value.
     */
     ~mutual_ptr();
+
+    /** Create a managed object using an allocator.
+
+        @param alloc The allocator to use.
+
+        @param args Optional arguments forwarded to
+        the managed object's constructor.
+
+        @note This constructor participates in overload resolution
+        if and only if the first parameter is not convertible to
+        @ref mutual_ptr.
+    */
+#if GENERATING_DOCS
+    template<class Alloc, class... Args>
+    explicit
+    mutual_ptr(Alloc const& alloc, Args&&... args);
+#else
+    template<class Alloc, class... Args,
+        class = typename std::enable_if<
+            ! std::is_convertible<
+                typename std::decay<Alloc>::type,
+                    mutual_ptr>::value>::type>
+    explicit
+    mutual_ptr(Alloc const& alloc, Args&&... args);
+#endif
 
     /** Default constructor.
 
@@ -96,18 +130,25 @@ public:
     /// Copy assignment
     mutual_ptr& operator=(mutual_ptr const& other);
 
+    /// Returns a pointer to the managed object
+    T*
+    get() const
+    {
+        return &p_->t;
+    }
+
     /** Return a reference to the managed object. */
     T&
     operator*() const
     {
-        return p_->t;
+        return *get();
     }
 
     /** Return a pointer to the managed object. */
     T*
     operator->() const
     {
-        return &(**this);
+        return get();
     }
 
     /** Returns the number of instances managing the current object.
@@ -117,7 +158,21 @@ public:
     std::size_t
     use_count() const
     {
-        return p_->n;
+        return p_ ? p_->n : 0;
+    }
+
+    /// Returns `true` if `*this* is the only owner of the managed object.
+    bool
+    unique() const
+    {
+        return use_count() == 1;
+    }
+
+    /// Returns `true` if `*this` manages an object.
+    explicit
+    operator bool() const
+    {
+        return p_ != nullptr;
     }
 
     /** Release ownership of the managed object. */
@@ -134,18 +189,13 @@ public:
     */
     void
     reset_all();
-
-public: // private
-    template<class Alloc, class... Args>
-    mutual_ptr(detail::mutual_ptr_alloc,
-        Alloc const& alloc, Args&&... args);
 };
 
 template<class T, class Alloc, class... Args>
 mutual_ptr<T>
 allocate_mutual(Alloc const& a, Args&&... args)
 {
-    return mutual_ptr<T>{detail::mutual_ptr_alloc{},
+    return mutual_ptr<T>{
         a, std::forward<Args>(args)...};
 }
 
