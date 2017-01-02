@@ -91,7 +91,7 @@ public:
 #if GENERATING_DOCS
     template<class Alloc, class... Args>
     explicit
-    mutual_ptr(Alloc const& alloc, Args&&... args);
+    mutual_ptr(Alloc&& alloc, Args&&... args);
 #else
     template<class Alloc, class... Args,
         class = typename std::enable_if<
@@ -99,7 +99,7 @@ public:
                 typename std::decay<Alloc>::type,
                     mutual_ptr>::value>::type>
     explicit
-    mutual_ptr(Alloc const& alloc, Args&&... args);
+    mutual_ptr(Alloc&& alloc, Args&&... args);
 #endif
 
     /** Default constructor.
@@ -191,10 +191,10 @@ public:
 
 template<class T, class Alloc, class... Args>
 mutual_ptr<T>
-allocate_mutual(Alloc const& a, Args&&... args)
+allocate_mutual(Alloc&& a, Args&&... args)
 {
-    return mutual_ptr<T>{
-        a, std::forward<Args>(args)...};
+    return mutual_ptr<T>{std::forward<Alloc>(a),
+        std::forward<Args>(args)...};
 }
 
 } // beast
