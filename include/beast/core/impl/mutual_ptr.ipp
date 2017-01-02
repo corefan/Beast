@@ -175,18 +175,18 @@ reset_all()
         auto cur = it;
         it = it->prev_;
         BOOST_ASSERT(cur->p_);
-        cur->release();
         cur->p_ = nullptr;
     }
-    it = this;
+    it = next_;
     while(it)
     {
         auto cur = it;
         it = it->next_;
         BOOST_ASSERT(cur->p_);
-        cur->release();
         cur->p_ = nullptr;
     }
+    this->p_->destroy();
+    this->p_ = nullptr;
 }
 
 template<class T>
